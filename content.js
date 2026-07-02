@@ -25,8 +25,12 @@ function parseVacancy() {
 }
 
 // Parse resume if we are on a resume page and save to chrome.storage
-function parseAndSaveResume() {
+async function parseAndSaveResume() {
   if (!window.location.pathname.includes('/resume/')) return;
+
+  const match = window.location.pathname.match(/\/resume\/([a-f0-9]+)/);
+  const resumeId = match ? match[1] : null;
+  if (!resumeId) return;
 
   // HH resume pages usually have a wrapper around the resume
   const resumeContainer = document.querySelector('.resume-wrapper') || document.querySelector('#HH-React-Root') || document.body;
@@ -42,12 +46,41 @@ function parseAndSaveResume() {
 
   // Simple validation to ensure it looks like a resume page
   if (cleanedText.includes('Резюме') || cleanedText.includes('Опыт работы')) {
-    chrome.storage.local.set({ lastParsedResume: cleanedText, lastParsedResumeDate: new Date().toISOString() });
-    showResumeSavedNotification();
+    const titleEl = document.querySelector('[data-qa="resume-block-title-position"]') || 
+                    document.querySelector('[data-qa="resume-title"]') || 
+                    document.querySelector('h1') || 
+                    document.querySelector('h2');
+    const title = titleEl ? titleEl.innerText.trim() : 'Без названия';
+
+    const storage = await chrome.storage.local.get(['resumes']);
+    let resumes = storage.resumes || [];
+    
+    // Find index of existing resume with same ID
+    const existingIndex = resumes.findIndex(r => r.id === resumeId);
+    const newResume = {
+      id: resumeId,
+      title: title,
+      text: cleanedText,
+      updatedAt: new Date().toISOString()
+    };
+
+    if (existingIndex !== -1) {
+      resumes[existingIndex] = newResume;
+    } else {
+      resumes.push(newResume);
+    }
+
+    await chrome.storage.local.set({ 
+      resumes: resumes,
+      lastParsedResume: cleanedText, // keeping for backward compatibility
+      lastParsedResumeDate: new Date().toISOString() 
+    });
+
+    showResumeSavedNotification(title);
   }
 }
 
-function showResumeSavedNotification() {
+function showResumeSavedNotification(resumeTitle) {
   // Check if notification already exists
   if (document.getElementById('gemini-resume-toast')) return;
 
@@ -67,7 +100,7 @@ function showResumeSavedNotification() {
     z-index: 999999;
     transition: opacity 0.3s;
   `;
-  toast.textContent = '✨ Резюме успешно сохранено для Gemini генератора!';
+  toast.textContent = `✨ Резюме «${resumeTitle}» успешно сохранено!`;
   document.body.appendChild(toast);
 
   setTimeout(() => {
@@ -218,14 +251,48 @@ async function openGenerationModal(textareaEl) {
   if (oldModal) oldModal.remove();
 
   const vacancy = getVacancyData() || { title: 'выбранную вакансию', company: '' };
-  const storage = await chrome.storage.local.get(['lastParsedResume', 'geminiApiKey']);
+  const storage = await chrome.storage.local.get(['resumes', 'geminiApiKey', 'preferredModel', 'availableModels']);
 
   const hasKey = !!storage.geminiApiKey;
-  const hasResume = !!storage.lastParsedResume;
+  const resumes = storage.resumes || [];
+  const models = storage.availableModels || [
+    { name: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash' },
+    { name: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro' }
+  ];
+  const preferredModel = storage.preferredModel || 'gemini-2.5-flash';
 
   const overlay = document.createElement('div');
   overlay.id = 'gemini-gen-modal';
   overlay.className = 'gemini-modal-overlay';
+
+  // Build Resume dropdown HTML
+  let resumeSelectHTML = '';
+  if (resumes.length > 0) {
+    resumeSelectHTML = `
+      <div class="gemini-field-group">
+        <label for="gemini-resume-select">Выберите резюме</label>
+        <select id="gemini-resume-select">
+          ${resumes.map(r => `<option value="${r.id}">${r.title} (обновлено ${new Date(r.updatedAt).toLocaleDateString()})</option>`).join('')}
+        </select>
+      </div>
+    `;
+  } else {
+    resumeSelectHTML = `
+      <div class="gemini-resume-status" style="background: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; padding: 10px; border-radius: 8px; font-size: 12px; color: #fbbf24; line-height: 1.4;">
+        ⚠️ Резюме не найдено в памяти. Рекомендуется открыть ваше резюме на hh.ru, чтобы расширение его запомнило. Вы также можете сгенерировать письмо без резюме.
+      </div>
+    `;
+  }
+
+  // Build Model dropdown HTML
+  const modelSelectHTML = `
+    <div class="gemini-field-group">
+      <label for="gemini-model-select">Модель ИИ</label>
+      <select id="gemini-model-select">
+        ${models.map(m => `<option value="${m.name}" ${m.name === preferredModel ? 'selected' : ''}>${m.displayName}</option>`).join('')}
+      </select>
+    </div>
+  `;
 
   overlay.innerHTML = `
     <div class="gemini-modal-container">
@@ -248,14 +315,19 @@ async function openGenerationModal(textareaEl) {
           </div>
         ` : ''}
 
-        <div class="gemini-resume-status ${hasResume ? 'found' : ''}">
-          <span>●</span>
-          <span>${hasResume ? 'Резюме обнаружено в локальной памяти расширения' : 'Резюме не найдено в памяти. Рекомендуется сначала открыть страницу вашего резюме на hh.ru, чтобы расширение его запомнило.'}</span>
-        </div>
+        ${resumeSelectHTML}
+        ${modelSelectHTML}
 
         <div class="gemini-field-group">
           <label for="gemini-custom-prompt">Дополнительные пожелания к письму</label>
           <textarea id="gemini-custom-prompt" placeholder="Например: 'сделай упор на мой опыт с Python и Django', 'не пиши слишком официально', 'укажи, что готов к релокации'"></textarea>
+          
+          <div class="gemini-quick-tags">
+            <button type="button" class="gemini-tag-btn" data-text="Сделай упор на мой стек технологий и практический опыт с ними.">🔥 Стек</button>
+            <button type="button" class="gemini-tag-btn" data-text="Напиши очень кратко и лаконично (не более 3-4 предложений).">⚡ Кратко</button>
+            <button type="button" class="gemini-tag-btn" data-text="Напиши сопроводительное письмо в строгом деловом стиле.">💼 Официально</button>
+            <button type="button" class="gemini-tag-btn" data-text="Напиши сопроводительное письмо в дружелюбном, открытом стиле.">🤝 Дружелюбно</button>
+          </div>
         </div>
       </div>
 
@@ -285,6 +357,21 @@ async function openGenerationModal(textareaEl) {
     if (e.target === overlay) closeModal();
   });
 
+  // Quick tags wiring
+  overlay.querySelectorAll('.gemini-tag-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.preventDefault();
+      const textToAppend = btn.getAttribute('data-text');
+      const currentValue = customPromptInput.value;
+      if (currentValue) {
+        customPromptInput.value = currentValue.trim() + ' ' + textToAppend;
+      } else {
+        customPromptInput.value = textToAppend;
+      }
+      customPromptInput.focus();
+    });
+  });
+
   // Form submit handler
   submitBtn.addEventListener('click', () => {
     submitBtn.disabled = true;
@@ -293,11 +380,27 @@ async function openGenerationModal(textareaEl) {
 
     const customPrompt = customPromptInput.value.trim();
 
+    // Get selected resume text
+    let selectedResumeText = null;
+    const resumeSelect = overlay.querySelector('#gemini-resume-select');
+    if (resumeSelect && resumes.length > 0) {
+      const selectedId = resumeSelect.value;
+      const foundResume = resumes.find(r => r.id === selectedId);
+      if (foundResume) {
+        selectedResumeText = foundResume.text;
+      }
+    }
+
+    // Get selected model
+    const modelSelect = overlay.querySelector('#gemini-model-select');
+    const selectedModel = modelSelect ? modelSelect.value : preferredModel;
+
     chrome.runtime.sendMessage({
       type: 'GENERATE_LETTER',
       vacancyData: vacancy,
-      resumeData: storage.lastParsedResume || null,
-      customPrompt: customPrompt
+      resumeData: selectedResumeText,
+      customPrompt: customPrompt,
+      model: selectedModel
     }, (response) => {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Сгенерировать письмо';
@@ -367,3 +470,12 @@ new MutationObserver(() => {
     setTimeout(init, 1000); // Give DOM a moment to render
   }
 }).observe(document, {subtree: true, childList: true});
+
+// Listen to messages from the popup script
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message.type === 'GET_VACANCY_DATA') {
+    sendResponse({ vacancyData: getVacancyData() });
+  }
+  return true;
+});
+

@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Gemini hh.ru Cover Letter Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+
+  <div class="popup-container">
+    <!-- Header -->
+    <header class="popup-header">
+      <div class="header-brand">
+        <svg viewBox="0 0 24 24" class="brand-logo">
+          <path d="M12 2L14.85 9.15L22 12L14.85 14.85L12 22L9.15 14.85L2 12L9.15 9.15L12 2Z" />
+        </svg>
+        <span class="brand-name">Gemini hh.ru</span>
+      </div>
+      <a href="options.html" target="_blank" class="settings-link" title="Настройки">
+        <svg viewBox="0 0 24 24" class="settings-icon">
+          <path d="M19.14 12.94c.04-.3.06-.61.06-.94 0-.32-.02-.64-.07-.94l2.03-1.58c.18-.14.23-.41.12-.61l-1.92-3.32c-.12-.22-.37-.29-.59-.22l-2.39.96c-.5-.38-1.03-.7-1.62-.94l-.36-2.54c-.04-.24-.24-.41-.48-.41h-3.84c-.24 0-.43.17-.47.41l-.36 2.54c-.59.24-1.13.57-1.62.94l-2.39-.96c-.22-.08-.47 0-.59.22L2.74 8.87c-.12.21-.08.47.12.61l2.03 1.58c-.05.3-.09.63-.09.94s.02.64.07.94l-2.03 1.58c-.18.14-.23.41-.12.61l1.92 3.32c.12.22.37.29.59.22l2.39-.96c.5.38 1.03.7 1.62.94l.36 2.54c.05.24.24.41.48.41h3.84c.24 0 .44-.17.47-.41l.36-2.54c.59-.24 1.13-.56 1.62-.94l2.39.96c.22.08.47 0 .59-.22l1.92-3.32c.12-.22.07-.47-.12-.61l-2.01-1.58zM12 15.6c-1.98 0-3.6-1.62-3.6-3.6s1.62-3.6 3.6-3.6 3.6 1.62 3.6 3.6-1.62 3.6-3.6 3.6z"/>
+        </svg>
+      </a>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <nav class="popup-tabs">
+      <button class="tab-btn active" id="tab-generate">Генерация</button>
+      <button class="tab-btn" id="tab-history">История</button>
+    </nav>
+
+    <!-- Content Sections -->
+    <main class="popup-main">
+      <!-- Error banner if API key is not set -->
+      <div id="api-status-banner" class="status-banner error">
+        ⚠️ API-ключ не настроен. <a href="options.html" target="_blank">Настроить</a>
+      </div>
+
+      <!-- SECTION 1: Generate -->
+      <div id="section-generate" class="content-section active">
+        <div class="form-group">
+          <label for="popup-resume-select">Резюме</label>
+          <select id="popup-resume-select">
+            <option value="">Без резюме</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="popup-model-select">Модель</label>
+          <select id="popup-model-select">
+            <option value="gemini-2.5-flash">Gemini 2.5 Flash</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="popup-vacancy-text">Вакансия (Название и Описание)</label>
+          <textarea id="popup-vacancy-text" placeholder="Введите название и описание вакансии... (Спарсится автоматически, если открыта страница вакансии на hh.ru)"></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="popup-custom-prompt">Пожелания к письму</label>
+          <textarea id="popup-custom-prompt" placeholder="Например: 'сделай упор на Laravel и Vue.js', 'напиши кратко'"></textarea>
+          
+          <div class="quick-tags">
+            <button type="button" class="tag-btn" data-text="Сделай упор на мой стек технологий и практический опыт с ними.">🔥 Стек</button>
+            <button type="button" class="tag-btn" data-text="Напиши очень кратко и лаконично (не более 3-4 предложений).">⚡ Кратко</button>
+            <button type="button" class="tag-btn" data-text="Напиши сопроводительное письмо в строгом деловом стиле.">💼 Официально</button>
+            <button type="button" class="tag-btn" data-text="Напиши сопроводительное письмо в дружелюбном, открытом стиле.">🤝 Дружелюбно</button>
+          </div>
+        </div>
+
+        <button id="generate-btn" class="btn btn-primary" disabled>
+          Сгенерировать и скопировать
+        </button>
+
+        <div id="generation-loader" class="loader-container">
+          <div class="loader"></div>
+          <span>ИИ генерирует письмо...</span>
+        </div>
+
+        <div id="result-container" class="result-container">
+          <div class="result-header">
+            <span>Результат:</span>
+            <button id="copy-result-btn" class="btn-icon" title="Скопировать">
+              <svg viewBox="0 0 24 24" width="16" height="16">
+                <path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+              </svg>
+            </button>
+          </div>
+          <textarea id="result-text" readonly></textarea>
+        </div>
+      </div>
+
+      <!-- SECTION 2: History -->
+      <div id="section-history" class="content-section">
+        <div id="history-list" class="history-list">
+          <p class="empty-msg">История генераций пуста</p>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <div id="toast" class="toast">Текст скопирован!</div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

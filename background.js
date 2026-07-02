@@ -2,7 +2,7 @@
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'GENERATE_LETTER') {
-    generateCoverLetter(message.vacancyData, message.resumeData, message.customPrompt)
+    generateCoverLetter(message.vacancyData, message.resumeData, message.customPrompt, message.model)
       .then(result => sendResponse({ success: true, text: result }))
       .catch(error => sendResponse({ success: false, error: error.message }));
     return true; // Keep message channel open for async response
@@ -41,10 +41,10 @@ async function testApiKey(key) {
   }
 }
 
-async function generateCoverLetter(vacancyData, resumeData, customPrompt) {
+async function generateCoverLetter(vacancyData, resumeData, customPrompt, selectedModel) {
   const storage = await chrome.storage.local.get(['geminiApiKey', 'preferredModel']);
   const apiKey = storage.geminiApiKey;
-  const model = storage.preferredModel || 'gemini-2.5-flash';
+  const model = selectedModel || storage.preferredModel || 'gemini-2.5-flash';
 
   if (!apiKey) {
     throw new Error('API key is not configured. Please set it in extension options.');
@@ -104,7 +104,29 @@ ${customPrompt || 'Нет дополнительных пожеланий.'}
   const text = parts.map(p => p.text || '').join('');
   console.log('Merged generated text length:', text.length);
   console.log('Merged generated text content:', text);
-  return text.trim();
+  
+  const trimmedText = text.trim();
+
+  // Save to generation history (max 5 items)
+  try {
+    const historyStorage = await chrome.storage.local.get(['generationHistory']);
+    let history = historyStorage.generationHistory || [];
+    history.unshift({
+      id: Date.now().toString(),
+      vacancyTitle: vacancyData.title || 'Неизвестная вакансия',
+      companyName: vacancyData.company || '',
+      letterText: trimmedText,
+      date: new Date().toISOString()
+    });
+    if (history.length > 5) {
+      history = history.slice(0, 5);
+    }
+    await chrome.storage.local.set({ generationHistory: history });
+  } catch (e) {
+    console.error('Error saving history:', e);
+  }
+
+  return trimmedText;
 }
 
 async function fetchModels(key) {

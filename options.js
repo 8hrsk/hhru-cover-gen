@@ -47,6 +47,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
             modelSelect.appendChild(option);
           });
+          // Save to storage
+          chrome.storage.local.set({ availableModels: response.models });
         }
         resolve();
       });

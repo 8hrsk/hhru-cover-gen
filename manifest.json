@@ -4,7 +4,8 @@
   "version": "1.0.0",
   "description": "Генерирует качественные сопроводительные письма для вакансий на hh.ru с помощью Gemini API.",
   "permissions": [
-    "storage"
+    "storage",
+    "activeTab"
   ],
   "host_permissions": [
     "https://*.hh.ru/*",
@@ -27,6 +28,7 @@
   ],
   "options_page": "options.html",
   "action": {
-    "default_title": "Gemini hh.ru Generator"
+    "default_title": "Gemini hh.ru Generator",
+    "default_popup": "popup.html"
   }
 }
