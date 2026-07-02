@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "Gemini Cover Letter Generator for hh.ru",
+  "version": "1.0.0",
+  "description": "Генерирует качественные сопроводительные письма для вакансий на hh.ru с помощью Gemini API.",
+  "permissions": [
+    "storage"
+  ],
+  "host_permissions": [
+    "https://*.hh.ru/*",
+    "https://hh.ru/*",
+    "https://generativelanguage.googleapis.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.hh.ru/*",
+        "https://hh.ru/*"
+      ],
+      "js": ["content.js"],
+      "css": ["content.css"],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_title": "Gemini hh.ru Generator"
+  }
+}

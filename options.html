@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <title>Настройки Gemini Cover Letter Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color: #0f172a;
+      --card-bg: #1e293b;
+      --text-color: #f8fafc;
+      --text-muted: #94a3b8;
+      --primary-color: #3b82f6;
+      --primary-hover: #2563eb;
+      --success-color: #10b981;
+      --error-color: #ef4444;
+      --border-color: #334155;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-color);
+      color: var(--text-color);
+      margin: 0;
+      padding: 40px 20px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      box-sizing: border-box;
+    }
+
+    .container {
+      max-width: 500px;
+      width: 100%;
+      background: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.3);
+      padding: 32px;
+      border: 1px solid var(--border-color);
+      backdrop-filter: blur(10px);
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-top: 0;
+      margin-bottom: 8px;
+      background: linear-gradient(135deg, #60a5fa, #3b82f6);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+
+    p.subtitle {
+      color: var(--text-muted);
+      font-size: 14px;
+      margin-bottom: 32px;
+      line-height: 1.5;
+    }
+
+    .form-group {
+      margin-bottom: 24px;
+    }
+
+    label {
+      display: block;
+      font-size: 14px;
+      font-weight: 500;
+      margin-bottom: 8px;
+      color: var(--text-color);
+    }
+
+    input[type="password"],
+    select {
+      width: 100%;
+      padding: 12px 16px;
+      background-color: #0f172a;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      color: var(--text-color);
+      font-size: 14px;
+      box-sizing: border-box;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+
+    input[type="password"]:focus,
+    select:focus {
+      outline: none;
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2);
+    }
+
+    .helper-text {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      line-height: 1.4;
+    }
+
+    .helper-text a {
+      color: var(--primary-color);
+      text-decoration: none;
+    }
+
+    .helper-text a:hover {
+      text-decoration: underline;
+    }
+
+    .actions {
+      display: flex;
+      gap: 12px;
+      margin-top: 32px;
+    }
+
+    button {
+      flex: 1;
+      padding: 12px 20px;
+      font-size: 14px;
+      font-weight: 600;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      transition: background-color 0.2s, transform 0.1s;
+    }
+
+    button.btn-primary {
+      background-color: var(--primary-color);
+      color: white;
+    }
+
+    button.btn-primary:hover {
+      background-color: var(--primary-hover);
+    }
+
+    button.btn-secondary {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-color);
+    }
+
+    button.btn-secondary:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    .status-message {
+      margin-top: 20px;
+      padding: 12px 16px;
+      border-radius: 8px;
+      font-size: 14px;
+      display: none;
+      line-height: 1.4;
+    }
+
+    .status-message.success {
+      display: block;
+      background-color: rgba(16, 185, 129, 0.1);
+      border: 1px solid var(--success-color);
+      color: #34d399;
+    }
+
+    .status-message.error {
+      display: block;
+      background-color: rgba(239, 68, 68, 0.1);
+      border: 1px solid var(--error-color);
+      color: #f87171;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container">
+    <h1>Настройки Gemini AI</h1>
+    <p class="subtitle">Укажите ваш API-ключ Gemini для генерации сопроводительных писем прямо на hh.ru без использования серверов.</p>
+
+    <div class="form-group">
+      <label for="apiKey">Gemini API Key</label>
+      <input type="password" id="apiKey" placeholder="AIzaSy...">
+      <div class="helper-text">
+        Получить бесплатный API ключ можно в консоли <a href="https://aistudio.google.com/" target="_blank">Google AI Studio</a>.
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label for="model">Модель по умолчанию</label>
+      <select id="model">
+        <option value="gemini-2.5-flash">Gemini 2.5 Flash (Быстрая, отлично подходит)</option>
+        <option value="gemini-2.5-pro">Gemini 2.5 Pro (Более умная, медленнее)</option>
+      </select>
+    </div>
+
+    <div class="actions">
+      <button class="btn-secondary" id="testBtn">Проверить ключ</button>
+      <button class="btn-primary" id="saveBtn">Сохранить</button>
+    </div>
+
+    <div id="status" class="status-message"></div>
+  </div>
+
+  <script src="options.js"></script>
+</body>
+</html>
