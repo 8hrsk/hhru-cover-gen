@@ -33,11 +33,37 @@ async function parseAndSaveResume() {
   if (!resumeId) return;
 
   // HH resume pages usually have a wrapper around the resume
-  const resumeContainer = document.querySelector('.resume-wrapper') || document.querySelector('#HH-React-Root') || document.body;
+  // Prefer the specific resume document container to avoid header/footer
+  const resumeContainer = document.querySelector('[data-qa="resume-document"]') || 
+                          document.querySelector('.resume-wrapper') || 
+                          document.querySelector('.resume-card') || 
+                          document.querySelector('#HH-React-Root') || 
+                          document.body;
   if (!resumeContainer) return;
 
+  // Clone the node to clean it up before extracting innerText
+  const clone = resumeContainer.cloneNode(true);
+  
+  // Selectors of unwanted elements we want to purge
+  const garbageSelectors = [
+    'header', 'footer', 'nav',
+    '.header', '.footer', '.sidebar',
+    '.resume-sidebar', '.noprint',
+    '[data-qa="resume-sidebar"]',
+    '[data-qa="chat-widget"]',
+    '#chat', '.chat',
+    '[data-qa="similar-vacancies-block"]',
+    '.resume-actions',
+    '.resume-search-block',
+    'script', 'style', 'noscript'
+  ];
+
+  garbageSelectors.forEach(sel => {
+    clone.querySelectorAll(sel).forEach(el => el.remove());
+  });
+
   // We extract text, clean up triple-newlines/redundant whitespace to save space
-  const rawText = resumeContainer.innerText;
+  const rawText = clone.innerText;
   const cleanedText = rawText
     .split('\n')
     .map(line => line.trim())
@@ -451,10 +477,42 @@ function observeDOM() {
   injectGeminiButton();
 }
 
+// Scrape applicant's name from hh.ru header or resume block
+async function parseCandidateName() {
+  // Option 1: On resume page, grab the personal name
+  const resumeNameEl = document.querySelector('[data-qa="resume-personal-name"]') || 
+                       document.querySelector('.resume-header-name') || 
+                       document.querySelector('[data-qa="resume-block-personal-name"]');
+  if (resumeNameEl && resumeNameEl.innerText.trim()) {
+    const name = resumeNameEl.innerText.trim();
+    await chrome.storage.local.set({ candidateName: name });
+    return name;
+  }
+
+  // Option 2: From the main header applicant profile menu (works on any logged-in page)
+  const headerSelectors = [
+    '[data-qa="mainmenu_applicantName"]',
+    '[data-qa="mainmenu_profile"]',
+    '.mainmenu-applicant-profile',
+    '[data-qa="applicant-menu-button"]'
+  ];
+
+  for (const sel of headerSelectors) {
+    const el = document.querySelector(sel);
+    if (el && el.innerText.trim()) {
+      const name = el.innerText.trim();
+      await chrome.storage.local.set({ candidateName: name });
+      return name;
+    }
+  }
+  return null;
+}
+
 // Initialise
 function init() {
   parseVacancy();
   parseAndSaveResume();
+  parseCandidateName();
   observeDOM();
 }
 

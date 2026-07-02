@@ -1,4 +1,5 @@
 // background.js
+importScripts('prompts.js');
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === 'GENERATE_LETTER') {
@@ -42,19 +43,16 @@ async function testApiKey(key) {
 }
 
 async function generateCoverLetter(vacancyData, resumeData, customPrompt, selectedModel) {
-  const storage = await chrome.storage.local.get(['geminiApiKey', 'preferredModel']);
+  const storage = await chrome.storage.local.get(['geminiApiKey', 'preferredModel', 'candidateName']);
   const apiKey = storage.geminiApiKey;
   const model = selectedModel || storage.preferredModel || 'gemini-2.5-flash';
+  const candidateName = storage.candidateName || '';
 
   if (!apiKey) {
     throw new Error('API key is not configured. Please set it in extension options.');
   }
 
   const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
-
-  const systemInstruction = `Ты — профессиональный карьерный консультант и копирайтер. Твоя задача — написать убедительное, краткое и персонализированное сопроводительное письмо (cover letter) для отклика на вакансию на русском языке.
-Используй данные о вакансии и резюме кандидата. Письмо должно быть вежливым, профессиональным, без лишней "воды", структурированным и подчеркивающим наиболее релевантные навыки кандидата для данной вакансии.
-Общий объем письма должен быть в пределах 150-250 слов (не слишком длинным, чтобы рекрутер мог быстро его прочитать).`;
 
   const prompt = `
 Данные о вакансии:
@@ -64,6 +62,8 @@ async function generateCoverLetter(vacancyData, resumeData, customPrompt, select
 
 Данные о резюме кандидата:
 ${resumeData ? `- Текст резюме: ${resumeData}` : 'Резюме не предоставлено. Напиши общее вежливое сопроводительное письмо на основе вакансии.'}
+
+Имя кандидата для подписи в письме (если указано, используй его для подписи в конце): ${candidateName || 'Не указано'}
 
 Дополнительные пожелания пользователя:
 ${customPrompt || 'Нет дополнительных пожеланий.'}
@@ -79,7 +79,7 @@ ${customPrompt || 'Нет дополнительных пожеланий.'}
     body: JSON.stringify({
       contents: [{ parts: [{ text: prompt }] }],
       systemInstruction: {
-        parts: [{ text: systemInstruction }]
+        parts: [{ text: MASTER_SYSTEM_INSTRUCTION }]
       },
       generationConfig: {
         temperature: 0.7,
