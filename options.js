@@ -64,12 +64,22 @@ document.addEventListener('DOMContentLoaded', async () => {
       return;
     }
 
-    await chrome.storage.local.set({
-      geminiApiKey: apiKey,
-      preferredModel: model
-    });
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Сохранение...';
 
-    showStatus('Настройки успешно сохранены!', 'success');
+    try {
+      await loadModels(apiKey, model);
+      await chrome.storage.local.set({
+        geminiApiKey: apiKey,
+        preferredModel: modelSelect.value || model
+      });
+      showStatus('Настройки успешно сохранены!', 'success');
+    } catch (e) {
+      showStatus('Ошибка сохранения списка моделей: ' + e.message, 'error');
+    } finally {
+      saveBtn.disabled = false;
+      saveBtn.textContent = 'Сохранить';
+    }
   });
 
   testBtn.addEventListener('click', () => {

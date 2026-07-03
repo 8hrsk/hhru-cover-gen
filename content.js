@@ -281,11 +281,8 @@ async function openGenerationModal(textareaEl) {
 
   const hasKey = !!storage.geminiApiKey;
   const resumes = storage.resumes || [];
-  const models = storage.availableModels || [
-    { name: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash' },
-    { name: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro' }
-  ];
-  const preferredModel = storage.preferredModel || 'gemini-2.5-flash';
+  let preferredModel = storage.preferredModel || 'gemini-2.5-flash';
+  let models = storage.availableModels || [];
 
   const overlay = document.createElement('div');
   overlay.id = 'gemini-gen-modal';
@@ -310,15 +307,23 @@ async function openGenerationModal(textareaEl) {
     `;
   }
 
-  // Build Model dropdown HTML
-  const modelSelectHTML = `
-    <div class="gemini-field-group">
-      <label for="gemini-model-select">Модель ИИ</label>
-      <select id="gemini-model-select">
-        ${models.map(m => `<option value="${m.name}" ${m.name === preferredModel ? 'selected' : ''}>${m.displayName}</option>`).join('')}
-      </select>
-    </div>
-  `;
+  // Build Model dropdown HTML helper
+  function buildModelSelectHTML(modelsList, selectedModel) {
+    const listToRender = modelsList.length > 0 ? modelsList : [
+      { name: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash' },
+      { name: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro' }
+    ];
+    return `
+      <div class="gemini-field-group">
+        <label for="gemini-model-select">Модель ИИ</label>
+        <select id="gemini-model-select">
+          ${listToRender.map(m => `<option value="${m.name}" ${m.name === selectedModel ? 'selected' : ''}>${m.displayName}</option>`).join('')}
+        </select>
+      </div>
+    `;
+  }
+
+  const modelSelectHTML = buildModelSelectHTML(models, preferredModel);
 
   overlay.innerHTML = `
     <div class="gemini-modal-container">
@@ -382,6 +387,35 @@ async function openGenerationModal(textareaEl) {
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) closeModal();
   });
+
+  // Dynamic models load & binding
+  const modelSelect = overlay.querySelector('#gemini-model-select');
+  if (modelSelect) {
+    modelSelect.addEventListener('change', async () => {
+      await chrome.storage.local.set({ preferredModel: modelSelect.value });
+    });
+  }
+
+  if (hasKey && models.length === 0) {
+    chrome.runtime.sendMessage({ type: 'FETCH_MODELS', key: storage.geminiApiKey }, (response) => {
+      if (response && response.success && response.models && response.models.length > 0) {
+        models = response.models;
+        const selectElement = overlay.querySelector('#gemini-model-select');
+        if (selectElement) {
+          const selectContainer = selectElement.parentElement;
+          selectContainer.outerHTML = buildModelSelectHTML(models, preferredModel);
+          
+          // Re-bind listener on the new select element
+          const newSelect = overlay.querySelector('#gemini-model-select');
+          if (newSelect) {
+            newSelect.addEventListener('change', async () => {
+              await chrome.storage.local.set({ preferredModel: newSelect.value });
+            });
+          }
+        }
+      }
+    });
+  }
 
   // Quick tags wiring
   overlay.querySelectorAll('.gemini-tag-btn').forEach(btn => {

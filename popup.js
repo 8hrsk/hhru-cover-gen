@@ -24,11 +24,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const storage = await chrome.storage.local.get(['geminiApiKey', 'resumes', 'preferredModel', 'availableModels']);
   const hasKey = !!storage.geminiApiKey;
   const resumes = storage.resumes || [];
-  const preferredModel = storage.preferredModel || 'gemini-2.5-flash';
-  const models = storage.availableModels || [
-    { name: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash' },
-    { name: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro' }
-  ];
+  let preferredModel = storage.preferredModel || 'gemini-2.5-flash';
+  let models = storage.availableModels || [];
 
   // API key configuration check
   if (hasKey) {
@@ -47,16 +44,42 @@ document.addEventListener('DOMContentLoaded', async () => {
     resumeSelect.appendChild(opt);
   });
 
-  // Populate Models
-  modelSelect.innerHTML = '';
-  models.forEach(m => {
-    const opt = document.createElement('option');
-    opt.value = m.name;
-    opt.textContent = m.displayName;
-    if (m.name === preferredModel) {
-      opt.selected = true;
-    }
-    modelSelect.appendChild(opt);
+  // Populate Models helper
+  function populateModels(modelsList, selectedModel) {
+    modelSelect.innerHTML = '';
+    const listToRender = modelsList.length > 0 ? modelsList : [
+      { name: 'gemini-2.5-flash', displayName: 'Gemini 2.5 Flash' },
+      { name: 'gemini-2.5-pro', displayName: 'Gemini 2.5 Pro' }
+    ];
+    listToRender.forEach(m => {
+      const opt = document.createElement('option');
+      opt.value = m.name;
+      opt.textContent = m.displayName;
+      if (m.name === selectedModel) {
+        opt.selected = true;
+      }
+      modelSelect.appendChild(opt);
+    });
+  }
+
+  // Render initial models list
+  populateModels(models, preferredModel);
+
+  // If availableModels is empty but API key is set, fetch models list dynamically
+  if (hasKey && models.length === 0) {
+    chrome.runtime.sendMessage({ type: 'FETCH_MODELS', key: storage.geminiApiKey }, (response) => {
+      if (response && response.success && response.models && response.models.length > 0) {
+        models = response.models;
+        populateModels(models, preferredModel);
+        chrome.storage.local.set({ availableModels: models });
+      }
+    });
+  }
+
+  // Save selected model on change so it persists
+  modelSelect.addEventListener('change', async () => {
+    const selectedModel = modelSelect.value;
+    await chrome.storage.local.set({ preferredModel: selectedModel });
   });
 
   // Auto-scrape active tab if it's hh.ru
