@@ -434,3 +434,38 @@ textarea {
 .toast.show {
   transform: translateX(-50%) translateY(0);
 }
+
+/* Profile status banner */
+.profile-status-container {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: rgba(30, 41, 59, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 8px 12px;
+  margin-bottom: 16px;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.profile-status-indicator {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.profile-status-container.linked {
+  border-color: rgba(16, 185, 129, 0.3);
+  background-color: rgba(16, 185, 129, 0.05);
+}
+
+.profile-status-container.linked .profile-status-indicator {
+  background-color: var(--success-color);
+}
+
+.profile-status-container.linked #profile-status-text {
+  color: var(--success-color);
+}

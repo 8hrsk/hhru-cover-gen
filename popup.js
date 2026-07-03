@@ -19,13 +19,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   const copyResultBtn = document.getElementById('copy-result-btn');
   const historyList = document.getElementById('history-list');
   const toast = document.getElementById('toast');
+  const profileStatusBanner = document.getElementById('profile-status-banner');
+  const profileStatusText = document.getElementById('profile-status-text');
 
   // Load configuration
-  const storage = await chrome.storage.local.get(['geminiApiKey', 'resumes', 'preferredModel', 'availableModels']);
+  const storage = await chrome.storage.local.get(['geminiApiKey', 'resumes', 'preferredModel', 'availableModels', 'profileData']);
   const hasKey = !!storage.geminiApiKey;
   const resumes = storage.resumes || [];
   let preferredModel = storage.preferredModel || 'gemini-2.5-flash';
   let models = storage.availableModels || [];
+  const profile = storage.profileData || null;
+
+  // Render Profile status badge
+  if (profile) {
+    profileStatusBanner.classList.add('linked');
+    profileStatusText.textContent = `Профиль: ${profile.name || 'Связан'} (${profile.phone || 'без тел.'}, ${profile.email || 'без email'})`;
+  } else {
+    profileStatusBanner.classList.remove('linked');
+    profileStatusText.textContent = 'Профиль не привязан. Откройте hh.ru/profile/me для связывания.';
+  }
 
   // API key configuration check
   if (hasKey) {

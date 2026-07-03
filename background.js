@@ -43,10 +43,11 @@ async function testApiKey(key) {
 }
 
 async function generateCoverLetter(vacancyData, resumeData, customPrompt, selectedModel) {
-  const storage = await chrome.storage.local.get(['geminiApiKey', 'preferredModel', 'candidateName']);
+  const storage = await chrome.storage.local.get(['geminiApiKey', 'preferredModel', 'candidateName', 'profileData']);
   const apiKey = storage.geminiApiKey;
   const model = selectedModel || storage.preferredModel || 'gemini-2.5-flash';
-  const candidateName = storage.candidateName || '';
+  const profile = storage.profileData || {};
+  const candidateName = storage.candidateName || profile.name || '';
 
   if (!apiKey) {
     throw new Error('API key is not configured. Please set it in extension options.');
@@ -63,7 +64,10 @@ async function generateCoverLetter(vacancyData, resumeData, customPrompt, select
 Данные о резюме кандидата:
 ${resumeData ? `- Текст резюме: ${resumeData}` : 'Резюме не предоставлено. Напиши общее вежливое сопроводительное письмо на основе вакансии.'}
 
-Имя кандидата для подписи в письме (если указано, используй его для подписи в конце): ${candidateName || 'Не указано'}
+Имя кандидата для подписи в письме (используй его для подписи в конце): ${candidateName || 'Не указано'}
+${profile.email || profile.phone ? `Контакты кандидата для указания в письме (если уместно):
+${profile.phone ? `- Телефон: ${profile.phone}` : ''}
+${profile.email ? `- Email: ${profile.email}` : ''}` : ''}
 
 Дополнительные пожелания пользователя:
 ${customPrompt || 'Нет дополнительных пожеланий.'}

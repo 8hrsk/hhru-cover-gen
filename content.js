@@ -277,12 +277,13 @@ async function openGenerationModal(textareaEl) {
   if (oldModal) oldModal.remove();
 
   const vacancy = getVacancyData() || { title: 'выбранную вакансию', company: '' };
-  const storage = await chrome.storage.local.get(['resumes', 'geminiApiKey', 'preferredModel', 'availableModels']);
+  const storage = await chrome.storage.local.get(['resumes', 'geminiApiKey', 'preferredModel', 'availableModels', 'profileData']);
 
   const hasKey = !!storage.geminiApiKey;
   const resumes = storage.resumes || [];
   let preferredModel = storage.preferredModel || 'gemini-2.5-flash';
   let models = storage.availableModels || [];
+  const profile = storage.profileData || null;
 
   const overlay = document.createElement('div');
   overlay.id = 'gemini-gen-modal';
@@ -338,6 +339,11 @@ async function openGenerationModal(textareaEl) {
         <p style="margin: 0; font-size: 13px; color: #94a3b8; line-height: 1.4;">
           Создание письма для вакансии: <strong>${vacancy.title}</strong> ${vacancy.company ? `в компании <strong>${vacancy.company}</strong>` : ''}
         </p>
+
+        <div style="margin-top: 8px; font-size: 11px; display: flex; align-items: center; gap: 6px; color: ${profile ? '#10b981' : '#94a3b8'};">
+          <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: ${profile ? '#10b981' : '#94a3b8'};"></span>
+          <span>${profile ? `Профиль привязан: ${profile.name || 'без имени'} (${profile.phone || 'без телефона'}, ${profile.email || 'без email'})` : 'Профиль не привязан. Откройте hh.ru/profile/me для автосвязывания.'}</span>
+        </div>
 
         ${!hasKey ? `
           <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; padding: 12px; border-radius: 8px; font-size: 13px; color: #f87171;">
@@ -542,11 +548,106 @@ async function parseCandidateName() {
   return null;
 }
 
+// Parse profile page and save to chrome.storage
+async function parseAndSaveProfile() {
+  const isProfilePage = window.location.pathname.includes('/profile');
+  if (!isProfilePage) return;
+  
+  // Make sure we are on profile me page or main profile page
+  const isMe = window.location.pathname.includes('/profile/me') || window.location.pathname === '/profile';
+  if (!isMe) return;
+
+  const container = document.querySelector('.profile-page') || document.querySelector('#HH-React-Root') || document.body;
+  if (!container) return;
+
+  // Find Name
+  let name = '';
+  const nameEl = document.querySelector('[data-qa="profile-name"]') || 
+                 document.querySelector('h1') || 
+                 document.querySelector('input[name*="name"]');
+  if (nameEl) {
+    name = nameEl.value ? nameEl.value.trim() : nameEl.innerText.trim();
+  }
+
+  // Find email using regex or selectors
+  let email = '';
+  const emailInput = document.querySelector('input[type="email"]') || document.querySelector('input[name*="email"]');
+  if (emailInput) {
+    email = emailInput.value.trim();
+  } else {
+    const emailMatch = container.innerText.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    if (emailMatch) email = emailMatch[0];
+  }
+
+  // Find phone number
+  let phone = '';
+  const phoneInput = document.querySelector('input[type="tel"]') || document.querySelector('input[name*="phone"]');
+  if (phoneInput) {
+    phone = phoneInput.value.trim();
+  } else {
+    const phoneMatch = container.innerText.match(/(?:\+7|8)\s?\(?\d{3}\)?\s?\d{3}[-\s]?\d{2}[-\s]?\d{2}/);
+    if (phoneMatch) phone = phoneMatch[0];
+  }
+
+  if (name || email || phone) {
+    const profileData = {
+      name,
+      email,
+      phone,
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Save to storage
+    const oldStorage = await chrome.storage.local.get(['profileData']);
+    const isDifferent = !oldStorage.profileData || 
+                        oldStorage.profileData.name !== name || 
+                        oldStorage.profileData.email !== email || 
+                        oldStorage.profileData.phone !== phone;
+
+    if (isDifferent) {
+      await chrome.storage.local.set({ profileData });
+      if (name) {
+        await chrome.storage.local.set({ candidateName: name });
+      }
+      showProfileSavedNotification();
+    }
+  }
+}
+
+function showProfileSavedNotification() {
+  if (document.getElementById('gemini-profile-toast')) return;
+
+  const toast = document.createElement('div');
+  toast.id = 'gemini-profile-toast';
+  toast.style.cssText = `
+    position: fixed;
+    bottom: 80px;
+    right: 24px;
+    background: #10b981;
+    color: white;
+    padding: 12px 20px;
+    border-radius: 8px;
+    font-family: sans-serif;
+    font-size: 14px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    z-index: 999999;
+    transition: opacity 0.3s;
+  `;
+  toast.textContent = '✨ Данные профиля (ФИО и контакты) успешно сохранены!';
+  document.body.appendChild(toast);
+
+  setTimeout(() => {
+    toast.style.opacity = '0';
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
 // Initialise
 function init() {
   parseVacancy();
   parseAndSaveResume();
   parseCandidateName();
+  parseAndSaveProfile();
   observeDOM();
 }
 
